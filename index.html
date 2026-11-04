@@ -225,6 +225,7 @@ create table if not exists public.settings (
   value text not null
 );
 insert into public.settings (key, value) values ('schema_version', '2') on conflict (key) do nothing;
+update public.settings set value = '2' where key = 'schema_version';
 alter table public.settings enable row level security;
 drop policy if exists "settings read" on public.settings;
 create policy "settings read" on public.settings for select to anon, authenticated using (true);
@@ -433,7 +434,7 @@ async function init(){
       return showSetup(missing ? '설치가 필요합니다. 아래 SQL을 실행한 뒤 다시 연결 확인을 누르세요.' : '연결에 실패했습니다: ' + error.message, missing);
     }
     if (!data) return showSetup('설치가 필요합니다. 아래 SQL을 실행한 뒤 다시 연결 확인을 누르세요.', true);
-    if (data.value !== SCHEMA_VERSION) return showSetup('데이터베이스 버전이 앱과 다릅니다. 강사님께 업데이트를 요청하세요.', false);
+    if (data.value !== SCHEMA_VERSION) return showSetup('데이터베이스 버전이 앱과 다릅니다. 아래 SQL을 다시 실행한 뒤 다시 연결 확인을 누르세요.', true);
   } catch (e) {
     return showSetup('연결에 실패했습니다: ' + errText(e), false);
   }
