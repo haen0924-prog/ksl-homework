@@ -28,6 +28,7 @@
   .card{background:var(--card); border-radius:20px; padding:24px; margin-bottom:20px; box-shadow:0 6px 20px rgba(120,100,180,.08)}
   .narrow{max-width:560px; margin:40px auto}
   h2{margin:0 0 14px; font-size:1.3rem}
+  h3{margin:0; font-size:1.15rem}
   label{display:block; font-weight:600; margin:14px 0 6px; font-size:.95rem}
   input[type=text],input[type=password],input[type=email],input[type=number],input[type=datetime-local],textarea,select{
     width:100%; padding:11px 13px; border:1.5px solid var(--line); border-radius:12px; font:inherit; background:#fdfcff; color:var(--ink)}
@@ -42,7 +43,10 @@
   .btn.light{background:rgba(255,255,255,.7); color:var(--ink); margin:0}
   .btn:disabled{opacity:.5; cursor:not-allowed}
   .btn-row{display:flex; flex-wrap:wrap; gap:10px; align-items:center}
+  .btn-row input{flex:1; min-width:180px; width:auto}
   video{width:100%; border-radius:14px; background:#222; margin-top:10px}
+  .yt{position:relative; padding-top:56.25%; margin-top:10px; border-radius:14px; overflow:hidden; background:#222}
+  .yt iframe{position:absolute; inset:0; width:100%; height:100%; border:0}
   .hint{color:var(--muted); font-size:.88rem}
   .msg{margin-top:14px; padding:12px 14px; border-radius:12px; font-size:.95rem}
   .msg.ok{background:var(--mint)} .msg.err{background:#ffe0e0} .msg.info{background:var(--sky)} .msg.warn{background:var(--peach)}
@@ -60,10 +64,17 @@
   .modal .card{width:100%; max-width:640px; max-height:92vh; overflow:auto; margin:0}
   pre.sql{background:#0f172a; color:#e2e8f0; border-radius:12px; padding:12px; font-size:12px; max-height:260px; overflow:auto; white-space:pre-wrap}
   .switch{display:flex; gap:8px; align-items:center; font-weight:600; margin:0}
+  .clip{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 14px; margin-top:8px;
+    border-radius:12px; background:var(--lavender)}
+  .chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px}
+  .chip{display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px; background:var(--sky); font-size:.92rem}
+  .chip-x{border:0; background:transparent; cursor:pointer; color:var(--warn); font-size:1rem; padding:0 2px; margin:0}
+  .lesson-box{background:#faf9ff; border:1px dashed var(--line); border-radius:16px; padding:14px 16px; margin-bottom:16px}
+  .lesson-card{background:var(--lavender); margin-top:18px}
+  .vitem{margin-top:6px}
 </style>
 </head>
 <body>
-
 <header>
   <h1>🤟 수어 실습 과제방</h1>
   <nav>
@@ -101,15 +112,18 @@
   <section id="view-submit" class="view">
     <div class="card">
       <h2>📹 실습 영상 과제 제출</h2>
-      <p class="hint">이름과 PIN(숫자 4자리)을 입력하고 영상을 찍거나 파일로 올려주세요. PIN은 점수 조회 때 필요합니다.</p>
+      <p class="hint">이름, PIN(숫자 4자리), 회차를 고르고 영상을 올려 주세요. 한 회차에 영상은 <b>최대 3개</b>까지 낼 수 있습니다.</p>
       <div class="row">
         <div><label for="sName">이름</label><input type="text" id="sName" maxlength="20" placeholder="예: 홍길동"></div>
         <div><label for="sPin">PIN (숫자 4자리)</label><input type="password" id="sPin" inputmode="numeric" maxlength="4"></div>
       </div>
+      <label for="sLesson">회차</label>
+      <select id="sLesson"></select>
     </div>
+
     <div class="card">
       <h2 style="font-size:1.1rem">🎬 영상 준비</h2>
-      <p class="hint"><b>최대 1분, 10MB 이하</b>로 찍어 주세요. 다시 제출하면 이전 영상이 바뀝니다.</p>
+      <p class="hint"><b>영상 1개는 1분 이하, 10MB 이하</b>로 찍어 주세요. 1분이 넘는 영상은 유튜브 <b>일부공개</b> 링크로 내 주세요.</p>
       <div class="btn-row">
         <button class="btn" id="btnCam">📷 카메라 켜기</button>
         <button class="btn soft" id="btnRec" disabled>⏺ 녹화 시작</button>
@@ -119,7 +133,18 @@
       <input type="file" id="fileInput" accept="video/mp4,video/webm" hidden>
       <video id="camPreview" autoplay muted playsinline hidden></video>
       <video id="videoPreview" controls playsinline hidden></video>
-      <p class="hint" id="videoInfo">아직 영상이 없습니다.</p>
+      <p class="hint" id="videoInfo">아직 찍거나 고른 영상이 없습니다.</p>
+      <div class="btn-row"><button class="btn" id="btnAddClip" disabled>➕ 이 영상 목록에 추가</button></div>
+
+      <label for="linkInput">유튜브 일부공개 링크 (1분 넘는 영상)</label>
+      <div class="btn-row">
+        <input type="text" id="linkInput" placeholder="https://youtu.be/...">
+        <button class="btn ghost" id="btnAddLink">🔗 링크 추가</button>
+      </div>
+
+      <h3 style="margin-top:20px" id="clipCount">영상 목록 (0 / 3)</h3>
+      <div id="clipList"></div>
+
       <button class="btn" id="btnSubmit" style="width:100%; padding:14px">✅ 과제 제출하기</button>
       <div id="submitMsg"></div>
     </div>
@@ -129,7 +154,7 @@
   <section id="view-result" class="view">
     <div class="card">
       <h2>🔍 내 점수 조회</h2>
-      <p class="hint">제출할 때 쓴 이름과 PIN을 입력하세요.</p>
+      <p class="hint">제출할 때 쓴 이름과 PIN을 입력하세요. 회차별로 결과가 나뉘어 보입니다.</p>
       <form id="resultForm">
         <div class="row">
           <div><label for="rName">이름</label><input type="text" id="rName" maxlength="20"></div>
@@ -148,7 +173,7 @@
       <p class="hint">처음이면 <b>[처음이면 가입]</b>을 누르세요. 가입 메일이 오면 인증 링크를 누른 뒤 로그인합니다.</p>
       <label for="tEmail">이메일</label>
       <input type="email" id="tEmail">
-      <label for="tPw">비밀번호 (6자 이상)</label>
+      <label for="tPw">비밀번호</label>
       <input type="password" id="tPw">
       <div class="btn-row">
         <button class="btn" id="btnLogin">로그인</button>
@@ -162,6 +187,7 @@
         <h2 style="margin:0">📋 제출 현황 <span id="countText" class="hint"></span></h2>
         <div class="btn-row">
           <label class="switch"><input type="checkbox" id="openChk"> 성적 공개</label>
+          <select id="lessonSel" style="width:auto"></select>
           <select id="filterSel" style="width:auto">
             <option value="all">전체</option>
             <option value="wait">미채점</option>
@@ -170,10 +196,22 @@
           <button class="btn ghost" id="btnLogout">로그아웃</button>
         </div>
       </div>
+
+      <div class="lesson-box">
+        <label for="newLesson" style="margin-top:0">회차 관리</label>
+        <p class="hint" style="margin:4px 0 0">회차를 먼저 만들어야 학생이 제출할 수 있습니다. 예: 1과, 2과</p>
+        <div class="btn-row">
+          <input type="text" id="newLesson" maxlength="30" placeholder="새 회차 이름 (예: 1과)">
+          <button class="btn" id="btnAddLesson">회차 추가</button>
+        </div>
+        <div id="lessonChips" class="chips"></div>
+        <div id="lessonMsg"></div>
+      </div>
+
       <p class="hint">성적 공개를 켜야 학생들이 점수와 영상을 볼 수 있습니다. 학생용 링크는 수강생에게만 보내세요.</p>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>이름</th><th>제출 시간</th><th>상태</th><th>점수</th><th></th></tr></thead>
+          <thead><tr><th>이름</th><th>회차</th><th>제출 시간</th><th>영상</th><th>상태</th><th>점수</th><th></th></tr></thead>
           <tbody id="listBody"></tbody>
         </table>
       </div>
@@ -189,7 +227,7 @@
       <h2 id="gTitle" style="margin:0"></h2>
       <button class="btn ghost" id="gClose" style="margin:0">닫기 ✕</button>
     </div>
-    <video id="gVideo" controls playsinline></video>
+    <div id="gVideos"></div>
     <div class="row">
       <div><label for="gScore">점수 (100점 만점)</label><input type="number" id="gScore" min="0" max="100"></div>
       <div><label>제출 시간</label><p id="gTime" class="hint" style="margin:10px 0"></p></div>
@@ -210,13 +248,15 @@
 'use strict';
 
 /* ================= 설정 ================= */
-const SCHEMA_VERSION = '2';        // 설치 SQL 버전 (SQL의 schema_version과 같아야 함)
+const SCHEMA_VERSION = '3';        // 설치 SQL 버전 (SQL의 schema_version과 같아야 함)
 const CFG_KEY = 'ksl-hw-config';
 const MAX_BYTES = 10 * 1024 * 1024;
 const MAX_SEC = 60;
+const MAX_CLIPS = 3;               // 회차당 최대 영상 수
+const YT_RE = /^https:\/\/(www\.|m\.)?(youtube\.com\/(watch\?v=|shorts\/|embed\/)|youtu\.be\/)[A-Za-z0-9_-]{6,}/;
 
 /* 설치 SQL: 강사님이 이 내용을 그대로 복사해서 SQL Editor에 붙여넣습니다. */
-const INSTALL_SQL = `-- 수어 실습 과제방 설치 SQL (버전 2, 한 번만 실행)
+const INSTALL_SQL = `-- 수어 실습 과제방 설치 SQL (버전 3, 한 번만 실행)
 create extension if not exists pgcrypto;
 create extension if not exists pg_cron;
 
@@ -225,8 +265,8 @@ create table if not exists public.settings (
   key text primary key,
   value text not null
 );
-insert into public.settings (key, value) values ('schema_version', '2') on conflict (key) do nothing;
-update public.settings set value = '2' where key = 'schema_version';
+insert into public.settings (key, value) values ('schema_version', '3') on conflict (key) do nothing;
+update public.settings set value = '3' where key = 'schema_version';
 alter table public.settings enable row level security;
 drop policy if exists "settings read" on public.settings;
 create policy "settings read" on public.settings for select to anon, authenticated using (true);
@@ -246,21 +286,52 @@ drop policy if exists "course manage" on public.course_settings;
 create policy "course manage" on public.course_settings for update to authenticated
   using (owner is null or owner = auth.uid()) with check (owner = auth.uid());
 
--- 제출 기록 (PIN은 암호화해서 저장)
+-- 회차 목록 (강사가 추가하고 지웁니다)
+create table if not exists public.lessons (
+  id uuid primary key default gen_random_uuid(),
+  name text not null unique check (char_length(name) between 1 and 30),
+  created_at timestamptz not null default now()
+);
+alter table public.lessons enable row level security;
+drop policy if exists "lessons read" on public.lessons;
+create policy "lessons read" on public.lessons for select to anon, authenticated using (true);
+drop policy if exists "lessons manage" on public.lessons;
+create policy "lessons manage" on public.lessons for all to authenticated
+  using (exists (select 1 from public.course_settings c where c.id = 1 and c.owner = auth.uid()))
+  with check (exists (select 1 from public.course_settings c where c.id = 1 and c.owner = auth.uid()));
+
+-- 제출 기록 (학생 한 명 + 회차 하나 = 한 줄, PIN은 암호화해서 저장)
 create table if not exists public.submissions (
   id uuid primary key default gen_random_uuid(),
   student_name text not null check (char_length(student_name) between 1 and 20),
   pin_hash text not null,
-  video_path text,
+  lesson text not null references public.lessons(name) on delete restrict,
   submitted_at timestamptz not null default now(),
   score int check (score between 0 and 100),
   feedback text not null default '',
-  graded_at timestamptz
+  graded_at timestamptz,
+  unique (student_name, lesson)
 );
 alter table public.submissions enable row level security;
 -- 주인 강사만 제출 기록을 보고 고칠 수 있습니다
 drop policy if exists "instructor manage" on public.submissions;
 create policy "instructor manage" on public.submissions for all to authenticated
+  using (exists (select 1 from public.course_settings c where c.id = 1 and c.owner = auth.uid()))
+  with check (exists (select 1 from public.course_settings c where c.id = 1 and c.owner = auth.uid()));
+
+-- 제출 영상 (한 제출에 최대 3개: 파일 또는 유튜브 링크)
+create table if not exists public.submission_videos (
+  id uuid primary key default gen_random_uuid(),
+  submission_id uuid not null references public.submissions(id) on delete cascade,
+  seq int not null check (seq between 1 and 3),
+  kind text not null check (kind in ('file', 'link')),
+  path text,
+  url text,
+  created_at timestamptz not null default now()
+);
+alter table public.submission_videos enable row level security;
+drop policy if exists "instructor manage video rows" on public.submission_videos;
+create policy "instructor manage video rows" on public.submission_videos for all to authenticated
   using (exists (select 1 from public.course_settings c where c.id = 1 and c.owner = auth.uid()))
   with check (exists (select 1 from public.course_settings c where c.id = 1 and c.owner = auth.uid()));
 
@@ -272,56 +343,103 @@ create table if not exists public.keep_alive (
 insert into public.keep_alive (id) values (1) on conflict (id) do nothing;
 alter table public.keep_alive enable row level security;
 
--- 수강생 제출 (로그인 없이, 이름 + PIN 으로 저장)
-create or replace function public.submit_homework(p_name text, p_pin text, p_video_path text)
+-- 수강생 제출 (로그인 없이, 이름 + PIN + 회차 + 영상 목록으로 저장)
+create or replace function public.submit_homework(p_name text, p_pin text, p_lesson text, p_items jsonb)
 returns text language plpgsql security definer set search_path = public, extensions as $$
-declare rec record; v_name text := btrim(p_name);
+declare
+  v_name text := btrim(p_name);
+  v_id uuid;
+  v_result text;
+  v_count int;
+  v_old text[];
+  vr record;
+  wr record;
 begin
   if v_name = '' or char_length(v_name) > 20 then return 'BAD_NAME'; end if;
   if p_pin is null or p_pin !~ '^[0-9]{4}$' then return 'BAD_PIN'; end if;
-  if p_video_path is null or p_video_path = '' then return 'NO_VIDEO'; end if;
+  if not exists (select 1 from public.lessons l where l.name = p_lesson) then return 'BAD_LESSON'; end if;
 
-  select * into rec from public.submissions s
-   where s.student_name = v_name and s.pin_hash = crypt(p_pin, s.pin_hash) limit 1;
+  v_count := coalesce(jsonb_array_length(p_items), 0);
+  if v_count < 1 or v_count > 3 then return 'BAD_COUNT'; end if;
 
-  if found then
-    if rec.video_path is not null then
-      delete from storage.objects where bucket_id = 'videos' and name = rec.video_path;
+  for vr in select t.elem from jsonb_array_elements(p_items) as t(elem) loop
+    if vr.elem->>'kind' = 'file' then
+      if coalesce(vr.elem->>'path', '') = '' then return 'NO_VIDEO'; end if;
+    elsif vr.elem->>'kind' = 'link' then
+      if coalesce(vr.elem->>'url', '') !~ '^https://(www[.]|m[.])?(youtube[.]com/(watch[?]v=|shorts/|embed/)|youtu[.]be/)[A-Za-z0-9_-]{6,}' then
+        return 'BAD_LINK';
+      end if;
+    else
+      return 'BAD_ITEM';
     end if;
-    update public.submissions
-       set video_path = p_video_path, submitted_at = now(), score = null, feedback = '', graded_at = null
-     where id = rec.id;
-    return 'UPDATED';
+  end loop;
+
+  -- 같은 이름은 항상 같은 PIN을 써야 합니다 (회차가 달라도 동일)
+  if exists (select 1 from public.submissions s where s.student_name = v_name and s.pin_hash <> crypt(p_pin, s.pin_hash)) then
+    return 'PIN_MISMATCH';
   end if;
 
-  insert into public.submissions (student_name, pin_hash, video_path)
-  values (v_name, crypt(p_pin, gen_salt('bf')), p_video_path);
-  return 'CREATED';
-end $$;
-grant execute on function public.submit_homework(text, text, text) to anon, authenticated;
-
--- 수강생 결과 조회 (이름 + PIN 이 맞을 때만)
-create or replace function public.get_my_result(p_name text, p_pin text)
-returns table (status text, score int, feedback text, submitted_at timestamptz, video_path text)
-language plpgsql security definer set search_path = public, extensions as $$
-declare rec record; v_open boolean;
-begin
-  select * into rec from public.submissions s
-   where s.student_name = btrim(p_name) and s.pin_hash = crypt(p_pin, s.pin_hash) limit 1;
-  if not found then
-    perform pg_sleep(0.5);      -- 틀린 PIN을 계속 시도하는 것을 느리게 만듭니다
-    return;
-  end if;
-
-  select c.results_open into v_open from public.course_settings c where c.id = 1;
-
-  if rec.score is null then
-    return query select 'GRADING'::text, null::int, ''::text, rec.submitted_at, null::text;
-  elsif not coalesce(v_open, false) then
-    return query select 'HIDDEN'::text, null::int, ''::text, rec.submitted_at, null::text;
+  select s.id into v_id from public.submissions s where s.student_name = v_name and s.lesson = p_lesson;
+  if found then
+    -- 같은 회차를 다시 제출하면 그 회차의 영상만 바뀝니다
+    select coalesce(array_agg(v.path), '{}') into v_old
+      from public.submission_videos v where v.submission_id = v_id and v.path is not null;
+    if array_length(v_old, 1) > 0 then
+      delete from storage.objects where bucket_id = 'videos' and name = any(v_old);
+    end if;
+    delete from public.submission_videos where submission_id = v_id;
+    update public.submissions set submitted_at = now(), score = null, feedback = '', graded_at = null where id = v_id;
+    v_result := 'UPDATED';
   else
-    return query select 'DONE'::text, rec.score, rec.feedback, rec.submitted_at, rec.video_path;
+    insert into public.submissions (student_name, pin_hash, lesson)
+    values (v_name, crypt(p_pin, gen_salt('bf')), p_lesson)
+    returning id into v_id;
+    v_result := 'CREATED';
   end if;
+
+  for wr in select t.elem, t.ord from jsonb_array_elements(p_items) with ordinality as t(elem, ord) loop
+    insert into public.submission_videos (submission_id, seq, kind, path, url)
+    values (v_id, wr.ord, wr.elem->>'kind',
+            case when wr.elem->>'kind' = 'file' then wr.elem->>'path' end,
+            case when wr.elem->>'kind' = 'link' then wr.elem->>'url' end);
+  end loop;
+
+  return v_result;
+end $$;
+grant execute on function public.submit_homework(text, text, text, jsonb) to anon, authenticated;
+
+-- 수강생 결과 조회 (이름 + PIN 이 맞을 때만, 회차별로 돌려줍니다)
+create or replace function public.get_my_result(p_name text, p_pin text)
+returns jsonb language plpgsql security definer set search_path = public, extensions as $$
+declare
+  v_name text := btrim(p_name);
+  v_open boolean;
+  v_out jsonb;
+begin
+  if not exists (select 1 from public.submissions s where s.student_name = v_name and s.pin_hash = crypt(p_pin, s.pin_hash)) then
+    perform pg_sleep(0.5);      -- 틀린 PIN을 계속 시도하는 것을 느리게 만듭니다
+    return '[]'::jsonb;
+  end if;
+
+  select coalesce(c.results_open, false) into v_open from public.course_settings c where c.id = 1;
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'lesson', s.lesson,
+      'submitted_at', s.submitted_at,
+      'status', case when s.score is null then 'GRADING' when not v_open then 'HIDDEN' else 'DONE' end,
+      'score', case when s.score is not null and v_open then s.score end,
+      'feedback', case when s.score is not null and v_open then s.feedback end,
+      'videos', case when s.score is not null and v_open then (
+          select coalesce(jsonb_agg(jsonb_build_object('kind', v.kind, 'path', v.path, 'url', v.url) order by v.seq), '[]'::jsonb)
+            from public.submission_videos v where v.submission_id = s.id)
+        end
+    ) order by l.created_at), '[]'::jsonb)
+  into v_out
+  from public.submissions s
+  join public.lessons l on l.name = s.lesson
+  where s.student_name = v_name and s.pin_hash = crypt(p_pin, s.pin_hash);
+
+  return v_out;
 end $$;
 grant execute on function public.get_my_result(text, text) to anon, authenticated;
 
@@ -329,8 +447,10 @@ grant execute on function public.get_my_result(text, text) to anon, authenticate
 create or replace function public.video_is_open(p_path text)
 returns boolean language sql security definer set search_path = public stable as $$
   select exists (
-    select 1 from public.submissions s join public.course_settings c on c.id = 1
-     where s.video_path = p_path and c.results_open and s.score is not null
+    select 1 from public.submission_videos v
+      join public.submissions s on s.id = v.submission_id
+      join public.course_settings c on c.id = 1
+     where v.path = p_path and c.results_open and s.score is not null
   );
 $$;
 grant execute on function public.video_is_open(text) to anon, authenticated;
@@ -355,26 +475,25 @@ create policy "instructor manage videos" on storage.objects for all to authentic
   using (bucket_id = 'videos' and exists (select 1 from public.course_settings c where c.id = 1 and c.owner = auth.uid()))
   with check (bucket_id = 'videos' and exists (select 1 from public.course_settings c where c.id = 1 and c.owner = auth.uid()));
 
--- 자동 정리: 채점 후 30일 된 영상 삭제, 제출 안 된 찌꺼기 파일 삭제
+-- 자동 정리: 채점 후 30일 된 영상 삭제, 아무 데도 안 쓰는 찌꺼기 파일 삭제 (점수·피드백은 남김)
 create or replace function public.cleanup_videos()
 returns void language plpgsql security definer set search_path = public, storage as $$
 begin
-  delete from storage.objects o using public.submissions s
-   where o.bucket_id = 'videos' and o.name = s.video_path
+  delete from storage.objects o using public.submission_videos v, public.submissions s
+   where o.bucket_id = 'videos' and o.name = v.path and v.submission_id = s.id
      and s.graded_at < now() - interval '30 days';
-  update public.submissions set video_path = null
-   where graded_at < now() - interval '30 days' and video_path is not null;
+  update public.submission_videos v set path = null from public.submissions s
+   where s.id = v.submission_id and s.graded_at < now() - interval '30 days' and v.path is not null;
   delete from storage.objects o
    where o.bucket_id = 'videos' and o.created_at < now() - interval '1 day'
-     and not exists (select 1 from public.submissions s where s.video_path = o.name);
+     and not exists (select 1 from public.submission_videos v where v.path = o.name);
 end $$;
 
--- 자동 작업 등록 (같은 이름이 있으면 덮어씀)
+-- 자동 실행: 매일 새벽 정리, 3일마다 깨우기 (프로젝트가 멈추지 않게)
 select cron.schedule('cleanup-videos', '0 17 * * *', 'select public.cleanup_videos();');
 select cron.schedule('keep-alive', '0 3 */3 * *', 'update public.keep_alive set pinged_at = now() where id = 1;');
 
--- 확인: 첫 번째 결과 0, 두 번째 결과에 cleanup-videos 와 keep-alive 가 보이면 정상
-select count(*) as submissions_count from public.submissions;
+-- 확인: 두 번째 결과에 cleanup-videos 와 keep-alive 가 보이면 정상
 select jobname, schedule from cron.job order by jobname;
 `;
 
@@ -396,14 +515,20 @@ function checkNamePin(name, pin){
   if (!/^\d{4}$/.test(pin)) return 'PIN은 숫자 4자리로 입력해 주세요.';
   return '';
 }
+function ytId(url){
+  const m = String(url || '').match(/(?:v=|shorts\/|embed\/|youtu\.be\/)([A-Za-z0-9_-]{6,})/);
+  return m ? m[1] : '';
+}
 
 /* ================= 상태 ================= */
 let cfg = JSON.parse(localStorage.getItem(CFG_KEY) || 'null');
 let sb = null;          // Supabase 연결
 let session = null;     // 강사 로그인 정보
 let rows = [];          // 제출 목록 (강사용)
+let lessons = [];       // 회차 목록 {id, name}
 let currentId = null;   // 채점 중인 제출 id
-let pending = null;     // 올릴 영상 {blob, ext, type}
+let clips = [];         // 제출할 영상 목록 (최대 3개)
+let pending = null;     // 방금 찍거나 고른 영상 {blob, ext, type, label}
 let stream = null, recorder = null, chunks = [], autoStopTimer = null, previewUrl = null;
 
 /* ================= 연결 설정 ================= */
@@ -461,6 +586,11 @@ $('#btnCopySql').onclick = async () => {
   try { await navigator.clipboard.writeText(INSTALL_SQL); alert('SQL을 복사했습니다. Supabase SQL Editor에 붙여넣고 Run을 누르세요.'); }
   catch (e) { const r = document.createRange(); r.selectNodeContents($('#sqlView')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); alert('복사가 안 되면 화면의 SQL을 직접 드래그해서 복사하세요.'); }
 };
+$('#btnLink').onclick = async () => {
+  const url = `${location.origin}${location.pathname}?p=${encodeURIComponent(cfg.url)}&k=${encodeURIComponent(cfg.key)}#submit`;
+  try { await navigator.clipboard.writeText(url); alert('학생용 링크를 복사했습니다. 수강생에게만 보내세요.'); }
+  catch (e) { prompt('아래 링크를 복사해서 수강생에게 보내세요.', url); }
+};
 
 /* ================= 화면 전환 ================= */
 const VIEWS = ['submit', 'result', 'teacher'];
@@ -474,18 +604,58 @@ function route(){
   });
   if (v === 'teacher') renderTeacher();
   else stopCamera();
+  if (v === 'submit') fillLessonSelect();
 }
 window.addEventListener('hashchange', route);
 
-/* ================= 수강생: 녹화 / 파일 / 제출 ================= */
+/* ================= 수강생: 회차 고르기 ================= */
+async function fillLessonSelect(){
+  const { data, error } = await sb.from('lessons').select('name').order('created_at');
+  const sel = $('#sLesson');
+  if (error) return setMsg($('#submitMsg'), 'err', '회차 목록을 불러오지 못했습니다: ' + error.message);
+  const names = (data || []).map(r => r.name);
+  const keep = sel.value;
+  sel.innerHTML = names.length
+    ? names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('')
+    : '<option value="">등록된 회차가 없습니다</option>';
+  if (names.includes(keep)) sel.value = keep;
+}
+
+/* ================= 수강생: 녹화 / 파일 / 링크 / 제출 ================= */
 function setPending(blob, ext, label){
-  pending = { blob, ext, type: 'video/' + ext };
+  pending = { blob, ext, type: 'video/' + ext, label };
   if (previewUrl) URL.revokeObjectURL(previewUrl);
   previewUrl = URL.createObjectURL(blob);
   $('#videoPreview').src = previewUrl;
   $('#videoPreview').hidden = false;
-  $('#videoInfo').textContent = `✔ ${label} · ${(blob.size / 1024 / 1024).toFixed(1)} MB`;
+  $('#videoInfo').textContent = `✔ ${label} · ${(blob.size / 1024 / 1024).toFixed(1)} MB (아래 [이 영상 목록에 추가]를 누르세요)`;
+  renderClips();
 }
+function clearPreview(){
+  pending = null;
+  if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
+  $('#videoPreview').removeAttribute('src');
+  $('#videoPreview').load();
+  $('#videoPreview').hidden = true;
+  $('#videoInfo').textContent = '아직 찍거나 고른 영상이 없습니다.';
+  $('#fileInput').value = '';
+}
+function renderClips(){
+  $('#clipCount').textContent = `영상 목록 (${clips.length} / ${MAX_CLIPS})`;
+  $('#clipList').innerHTML = clips.length
+    ? clips.map((c, i) => `
+      <div class="clip"><span>${i + 1}번 · ${esc(c.label)}</span>
+        <button class="btn ghost" style="margin:0; padding:6px 12px" data-rm="${i}">삭제</button></div>`).join('')
+    : '<p class="hint">아직 추가한 영상이 없습니다.</p>';
+  $('#btnAddClip').disabled = !pending || clips.length >= MAX_CLIPS;
+  $('#btnAddLink').disabled = clips.length >= MAX_CLIPS;
+}
+$('#clipList').addEventListener('click', e => {
+  const b = e.target.closest('[data-rm]');
+  if (!b) return;
+  clips.splice(Number(b.dataset.rm), 1);
+  renderClips();
+});
 async function startCamera(){
   if (stream) return;
   try {
@@ -510,6 +680,7 @@ function stopCamera(){
   $('#btnStop').disabled = true;
 }
 function startRec(){
+  if (clips.length >= MAX_CLIPS) return alert('영상은 최대 3개까지 추가할 수 있습니다.');
   chunks = [];
   // 비트레이트를 낮춰서 1분 영상이 10MB 안에 들어가게 합니다 (약 7~8MB)
   recorder = new MediaRecorder(stream, { videoBitsPerSecond: 1000000, audioBitsPerSecond: 64000 });
@@ -535,46 +706,73 @@ $('#fileInput').onchange = e => {
   if (!f) return;
   const ext = (f.name.split('.').pop() || '').toLowerCase();
   if (!['mp4', 'webm'].includes(ext)) { alert('mp4 또는 webm 파일만 올릴 수 있습니다.'); e.target.value = ''; return; }
-  if (f.size > MAX_BYTES) { alert('영상은 10MB 이하로 올려 주세요.'); e.target.value = ''; return; }
+  if (f.size > MAX_BYTES) { alert('영상은 10MB 이하로 올려 주세요. 1분이 넘는 영상은 유튜브 일부공개 링크로 내 주세요.'); e.target.value = ''; return; }
   setPending(f, ext, f.name);
+};
+$('#btnAddClip').onclick = () => {
+  if (!pending || clips.length >= MAX_CLIPS) return;
+  clips.push({ kind: 'file', blob: pending.blob, ext: pending.ext, type: pending.type, label: pending.label });
+  clearPreview();
+  renderClips();
+};
+$('#btnAddLink').onclick = () => {
+  const url = $('#linkInput').value.trim();
+  const box = $('#submitMsg');
+  if (clips.length >= MAX_CLIPS) return setMsg(box, 'err', '영상은 최대 3개까지 추가할 수 있습니다.');
+  if (!YT_RE.test(url)) return setMsg(box, 'err', '유튜브 링크를 정확히 넣어 주세요. 일부공개 링크(https://…)여야 합니다.');
+  clips.push({ kind: 'link', url, label: '유튜브 링크' });
+  $('#linkInput').value = '';
+  box.innerHTML = '';
+  renderClips();
 };
 
 function resetSubmitForm(){
   $('#sName').value = '';
   $('#sPin').value = '';
-  pending = null;
-  if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
-  $('#videoPreview').removeAttribute('src');
-  $('#videoPreview').load();
-  $('#videoPreview').hidden = true;
-  $('#videoInfo').textContent = '아직 영상이 없습니다.';
-  $('#fileInput').value = '';
+  clips = [];
+  clearPreview();
+  $('#linkInput').value = '';
+  $('#videoInfo').textContent = '아직 찍거나 고른 영상이 없습니다.';
+  renderClips();
 }
 const SUBMIT_MESSAGES = {
   BAD_NAME: '이름을 확인해 주세요.',
   BAD_PIN: 'PIN은 숫자 4자리입니다.',
-  NO_VIDEO: '영상이 없습니다. 다시 올려 주세요.'
+  BAD_LESSON: '선택한 회차가 없습니다. 목록을 다시 확인해 주세요.',
+  BAD_COUNT: '영상은 1개 이상, 최대 3개까지 낼 수 있습니다.',
+  BAD_LINK: '유튜브 링크 형식이 맞지 않습니다.',
+  BAD_ITEM: '영상 형식을 확인할 수 없습니다.',
+  NO_VIDEO: '영상이 없습니다. 다시 올려 주세요.',
+  PIN_MISMATCH: '이 이름은 처음 제출할 때 쓴 PIN과 다릅니다. 같은 PIN을 입력해 주세요.'
 };
 $('#btnSubmit').onclick = async () => {
-  const name = $('#sName').value.trim(), pin = $('#sPin').value.trim();
+  const name = $('#sName').value.trim(), pin = $('#sPin').value.trim(), lesson = $('#sLesson').value;
   const box = $('#submitMsg');
   const err = checkNamePin(name, pin);
   if (err) return setMsg(box, 'err', err);
-  if (!pending) return setMsg(box, 'err', '영상을 먼저 녹화하거나 올려 주세요.');
-  if (pending.blob.size > MAX_BYTES) return setMsg(box, 'err', '영상은 10MB 이하여야 합니다.');
+  if (!lesson) return setMsg(box, 'err', '회차를 골라 주세요. 회차가 없으면 강사님께 알려 주세요.');
+  if (!clips.length) return setMsg(box, 'err', '영상을 1개 이상 추가해 주세요.');
 
   $('#btnSubmit').disabled = true;
   try {
-    const path = `${newUuid()}.${pending.ext}`;
-    const up = await sb.storage.from('videos').upload(path, pending.blob, { contentType: pending.type, upsert: false });
-    if (up.error) throw up.error;
-
-    const { data, error } = await sb.rpc('submit_homework', { p_name: name, p_pin: pin, p_video_path: path });
+    const items = [];
+    for (const c of clips) {
+      if (c.kind === 'file') {
+        if (c.blob.size > MAX_BYTES) throw new Error('영상은 10MB 이하여야 합니다.');
+        const path = `${newUuid()}.${c.ext}`;
+        const up = await sb.storage.from('videos').upload(path, c.blob, { contentType: c.type, upsert: false });
+        if (up.error) throw up.error;
+        items.push({ kind: 'file', path });
+      } else {
+        items.push({ kind: 'link', url: c.url });
+      }
+    }
+    const { data, error } = await sb.rpc('submit_homework', { p_name: name, p_pin: pin, p_lesson: lesson, p_items: items });
     if (error) throw error;
     if (data !== 'CREATED' && data !== 'UPDATED') return setMsg(box, 'err', SUBMIT_MESSAGES[data] || '제출하지 못했습니다.');
 
     setMsg(box, 'ok', data === 'UPDATED'
-      ? '다시 제출했습니다. 이전 영상은 바뀌고 점수는 새로 채점됩니다.'
+      ? `다시 제출했습니다. "${lesson}"의 이전 영상은 모두 바뀌고 점수는 새로 채점됩니다.`
       : '제출이 완료되었습니다! 채점이 끝나면 점수 조회에서 확인할 수 있어요.');
     resetSubmitForm();
   } catch (e) {
@@ -584,7 +782,56 @@ $('#btnSubmit').onclick = async () => {
   }
 };
 
+/* ================= 영상 한 개를 화면에 만드는 도구 (학생·강사 공용) ================= */
+async function videoEl(v, label){
+  const wrap = document.createElement('div');
+  wrap.className = 'vitem';
+  wrap.innerHTML = `<p class="hint" style="margin:10px 0 0">${esc(label)}</p>`;
+  if (v.kind === 'link') {
+    const id = ytId(v.url);
+    wrap.insertAdjacentHTML('beforeend', id
+      ? `<div class="yt"><iframe src="https://www.youtube-nocookie.com/embed/${esc(id)}" allowfullscreen title="${esc(label)}"></iframe></div>`
+      : '<p class="hint">링크를 열 수 없습니다.</p>');
+    return wrap;
+  }
+  if (!v.path) {
+    wrap.insertAdjacentHTML('beforeend', '<p class="hint">보관 기간이 지나 영상이 삭제되었습니다.</p>');
+    return wrap;
+  }
+  const { data, error } = await sb.storage.from('videos').createSignedUrl(v.path, 3600);
+  if (data && data.signedUrl) wrap.insertAdjacentHTML('beforeend', `<video controls playsinline src="${esc(data.signedUrl)}"></video>`);
+  else wrap.insertAdjacentHTML('beforeend', `<p class="hint">영상을 불러오지 못했습니다${error ? ': ' + esc(error.message) : ''}</p>`);
+  return wrap;
+}
+
 /* ================= 수강생: 점수 조회 ================= */
+function lessonCard(r, i){
+  let body;
+  if (r.status === 'GRADING') {
+    body = '<div class="msg info">⏳ 현재 채점 중입니다. 조금만 기다려 주세요.</div>';
+  } else if (r.status === 'HIDDEN') {
+    body = '<div class="msg info">✅ 채점이 끝났습니다. 점수는 강사님이 공개하면 볼 수 있어요.</div>';
+  } else {
+    body = `
+      <div class="score-big">${esc(r.score)}<span style="font-size:1.2rem"> / 100점</span></div>
+      <p style="font-weight:600; margin:14px 0 4px">강사 피드백</p>
+      <p style="white-space:pre-wrap; margin-top:0">${esc(r.feedback || '작성된 피드백이 없습니다.')}</p>
+      <p style="font-weight:600; margin:14px 0 4px">제출한 영상</p>
+      <div id="rv-${i}"></div>`;
+  }
+  return `<div class="card lesson-card">
+    <div class="toolbar"><h3>${esc(r.lesson)}</h3><span class="hint">제출: ${fmtTime(r.submitted_at)}</span></div>
+    ${body}
+  </div>`;
+}
+async function fillResultVideos(r, i){
+  const box = $(`#rv-${i}`);
+  if (!box) return;
+  const vids = r.videos || [];
+  if (!vids.length) { box.innerHTML = '<p class="hint">영상이 없습니다.</p>'; return; }
+  box.innerHTML = '';
+  for (const [n, v] of vids.entries()) box.appendChild(await videoEl(v, `${n + 1}번 영상`));
+}
 $('#resultForm').onsubmit = async e => {
   e.preventDefault();
   const name = $('#rName').value.trim(), pin = $('#rPin').value.trim();
@@ -594,38 +841,16 @@ $('#resultForm').onsubmit = async e => {
 
   const { data, error } = await sb.rpc('get_my_result', { p_name: name, p_pin: pin });
   if (error) return setMsg(box, 'err', '조회 중 문제가 생겼습니다: ' + error.message);
-  if (!data || data.length === 0) return setMsg(box, 'err', '이름 또는 PIN이 일치하지 않습니다. 다시 확인해 주세요.');
+  const list = Array.isArray(data) ? data : [];
+  if (!list.length) return setMsg(box, 'err', '이름 또는 PIN이 일치하지 않습니다. 다시 확인해 주세요.');
 
-  const r = data[0];
-  if (r.status === 'GRADING') {
-    box.innerHTML = `<div class="msg info" style="margin-top:18px">⏳ 현재 채점 중입니다. 조금만 기다려 주세요.<br><span class="hint">제출 시간: ${fmtTime(r.submitted_at)}</span></div>`;
-    return;
-  }
-  if (r.status === 'HIDDEN') {
-    box.innerHTML = `<div class="msg info" style="margin-top:18px">✅ 채점이 끝났습니다. 점수는 강사님이 공개하면 볼 수 있어요.</div>`;
-    return;
-  }
-
-  box.innerHTML = `
-    <div class="card" style="margin-top:18px; background:var(--lavender)">
-      <p class="hint" style="margin:0">${esc(name)} 님의 결과</p>
-      <div class="score-big">${r.score}<span style="font-size:1.2rem"> / 100점</span></div>
-      <p style="font-weight:600; margin:14px 0 4px">강사 피드백</p>
-      <p style="white-space:pre-wrap; margin-top:0">${esc(r.feedback || '작성된 피드백이 없습니다.')}</p>
-      <p style="font-weight:600; margin:14px 0 4px">제출한 영상</p>
-      <div id="resVideoBox"></div>
-    </div>`;
-  if (r.video_path) {
-    const { data: s, error: se } = await sb.storage.from('videos').createSignedUrl(r.video_path, 3600);
-    $('#resVideoBox').innerHTML = (s && s.signedUrl)
-      ? `<video controls playsinline src="${esc(s.signedUrl)}"></video>`
-      : `<p class="hint">영상을 불러오지 못했습니다${se ? ': ' + esc(se.message) : ''}</p>`;
-  } else {
-    $('#resVideoBox').innerHTML = '<p class="hint">보관 기간이 지나 영상이 삭제되었습니다. 점수와 피드백은 그대로 남아 있습니다.</p>';
+  box.innerHTML = list.map((r, i) => lessonCard(r, i)).join('');
+  for (const [i, r] of list.entries()) {
+    if (r.status === 'DONE') await fillResultVideos(r, i);
   }
 };
 
-/* ================= 강사: 로그인 / 목록 / 채점 ================= */
+/* ================= 강사: 로그인 ================= */
 let ownerChecked = false;   // 이 과제방의 주인인지 확인했는지
 function renderTeacher(){
   $('#tLogin').hidden = !!session;
@@ -679,31 +904,70 @@ $('#btnLogout').onclick = async () => {
   renderTeacher();
 };
 
+/* ================= 강사: 회차 관리 ================= */
+$('#btnAddLesson').onclick = async () => {
+  const name = $('#newLesson').value.trim();
+  const box = $('#lessonMsg');
+  if (!name) return setMsg(box, 'err', '회차 이름을 입력해 주세요.');
+  const { error } = await sb.from('lessons').insert({ name });
+  if (error) return setMsg(box, 'err', error.code === '23505' ? '이미 있는 회차 이름입니다.' : '추가 실패: ' + error.message);
+  $('#newLesson').value = '';
+  setMsg(box, 'ok', `"${name}" 회차를 추가했습니다.`);
+  loadTeacher();
+};
+$('#lessonChips').addEventListener('click', async e => {
+  const b = e.target.closest('[data-del-lesson]');
+  if (!b) return;
+  const l = lessons.find(x => x.id === b.dataset.delLesson);
+  if (!l || !confirm(`"${l.name}" 회차를 지울까요?`)) return;
+  const { error } = await sb.from('lessons').delete().eq('id', l.id);
+  if (error) return setMsg($('#lessonMsg'), 'err', '삭제하지 못했습니다. 이 회차에 제출 기록이 남아 있으면 먼저 그 제출을 지워야 합니다.');
+  loadTeacher();
+});
+
+/* ================= 강사: 목록 ================= */
 async function loadTeacher(){
-  const [sub, course] = await Promise.all([
-    sb.from('submissions').select('id,student_name,submitted_at,score,feedback,video_path').order('submitted_at', { ascending: false }),
-    sb.from('course_settings').select('results_open').eq('id', 1).single()
+  const [sub, course, les] = await Promise.all([
+    sb.from('submissions').select('id,student_name,lesson,submitted_at,score,feedback,graded_at,submission_videos(id,seq,kind,path,url)').order('submitted_at', { ascending: false }),
+    sb.from('course_settings').select('results_open').eq('id', 1).single(),
+    sb.from('lessons').select('id,name,created_at').order('created_at')
   ]);
   if (sub.error) { alert('목록을 불러오지 못했습니다: ' + sub.error.message); return; }
+  if (les.error) { alert('회차 목록을 불러오지 못했습니다: ' + les.error.message); return; }
   rows = sub.data || [];
+  lessons = les.data || [];
   $('#openChk').checked = !!(course.data && course.data.results_open);
+  renderLessons();
   renderList();
 }
+function renderLessons(){
+  const cur = $('#lessonSel').value || 'all';
+  $('#lessonSel').innerHTML = '<option value="all">전체 회차</option>'
+    + lessons.map(l => `<option value="${esc(l.name)}">${esc(l.name)}</option>`).join('');
+  if (cur === 'all' || lessons.some(l => l.name === cur)) $('#lessonSel').value = cur;
+  $('#lessonChips').innerHTML = lessons.length
+    ? lessons.map(l => `<span class="chip">${esc(l.name)} <button class="chip-x" data-del-lesson="${esc(l.id)}" title="회차 삭제">×</button></span>`).join('')
+    : '<span class="hint">아직 회차가 없습니다. 위에서 추가하세요.</span>';
+}
 function renderList(){
-  const f = $('#filterSel').value;
-  const list = rows.filter(r => f === 'all' || (f === 'done') === (r.score != null));
-  $('#countText').textContent = `(총 ${rows.length}명 · 미채점 ${rows.filter(r => r.score == null).length}명)`;
+  const f = $('#filterSel').value, l = $('#lessonSel').value;
+  const inLesson = rows.filter(r => l === 'all' || r.lesson === l);
+  const list = inLesson.filter(r => f === 'all' || (f === 'done') === (r.score != null));
+  $('#countText').textContent = `(${l === 'all' ? '전체 회차' : l} · 총 ${inLesson.length}명 · 미채점 ${inLesson.filter(r => r.score == null).length}명)`;
   $('#listBody').innerHTML = list.length ? list.map(r => `
     <tr>
       <td><strong>${esc(r.student_name)}</strong></td>
+      <td>${esc(r.lesson)}</td>
       <td>${fmtTime(r.submitted_at)}</td>
+      <td>${(r.submission_videos || []).length}개</td>
       <td>${r.score == null ? '<span class="badge wait">미채점</span>' : '<span class="badge done">채점완료</span>'}</td>
       <td>${r.score == null ? '-' : r.score + '점'}</td>
-      <td><button class="btn ghost" style="margin:0; padding:7px 12px" data-grade="${r.id}">채점하기</button></td>
+      <td><button class="btn ghost" style="margin:0; padding:7px 12px" data-grade="${esc(r.id)}">채점하기</button></td>
     </tr>`).join('')
-    : '<tr><td colspan="5" class="hint">해당하는 제출이 없습니다.</td></tr>';
+    : '<tr><td colspan="7" class="hint">해당하는 제출이 없습니다.</td></tr>';
 }
 $('#filterSel').onchange = renderList;
+$('#lessonSel').onchange = renderList;
 $('#listBody').addEventListener('click', e => {
   const b = e.target.closest('[data-grade]');
   if (b) openGrade(b.dataset.grade);
@@ -712,36 +976,28 @@ $('#openChk').onchange = async e => {
   const { error } = await sb.from('course_settings').update({ results_open: e.target.checked }).eq('id', 1);
   if (error) { alert('저장 실패: ' + error.message); e.target.checked = !e.target.checked; return; }
 };
-$('#btnLink').onclick = async () => {
-  const url = `${location.origin}${location.pathname}?p=${encodeURIComponent(cfg.url)}&k=${encodeURIComponent(cfg.key)}#submit`;
-  try { await navigator.clipboard.writeText(url); alert('학생용 링크를 복사했습니다. 수강생에게만 보내세요.'); }
-  catch (e) { prompt('아래 링크를 복사해서 수강생에게 보내세요.', url); }
-};
 
+/* ================= 강사: 채점 ================= */
 async function openGrade(id){
   const r = rows.find(x => x.id === id);
   if (!r) return;
   currentId = id;
-  $('#gTitle').textContent = `${r.student_name} 님의 과제`;
+  $('#gTitle').textContent = `${r.student_name} · ${r.lesson}`;
   $('#gScore').value = r.score ?? '';
   $('#gFeedback').value = r.feedback || '';
   $('#gTime').textContent = '제출: ' + fmtTime(r.submitted_at);
   $('#gMsg').innerHTML = '';
-  $('#gVideo').removeAttribute('src');
-  if (r.video_path) {
-    const { data, error } = await sb.storage.from('videos').createSignedUrl(r.video_path, 3600);
-    if (data && data.signedUrl) $('#gVideo').src = data.signedUrl;
-    else setMsg($('#gMsg'), 'err', '영상을 불러오지 못했습니다' + (error ? ': ' + error.message : ''));
-  } else {
-    setMsg($('#gMsg'), 'info', '영상이 없습니다. (보관 기간이 지나 삭제되었을 수 있습니다)');
-  }
   $('#gradeModal').classList.add('show');
+  const box = $('#gVideos');
+  box.innerHTML = '';
+  const vids = [...(r.submission_videos || [])].sort((a, b) => a.seq - b.seq);
+  if (!vids.length) { box.innerHTML = '<p class="hint">제출된 영상이 없습니다.</p>'; return; }
+  for (const v of vids) box.appendChild(await videoEl(v, `${v.seq}번 영상`));
 }
 function closeGrade(){
   $('#gradeModal').classList.remove('show');
-  $('#gVideo').pause();
-  $('#gVideo').removeAttribute('src');
-  $('#gVideo').load();
+  $('#gVideos').querySelectorAll('video').forEach(v => v.pause());
+  $('#gVideos').innerHTML = '';
   currentId = null;
 }
 $('#gClose').onclick = closeGrade;
@@ -759,9 +1015,13 @@ $('#gSave').onclick = async () => {
   loadTeacher();
 };
 $('#gDelete').onclick = async () => {
-  if (!currentId || !confirm('이 제출물을 삭제할까요? 영상과 점수가 모두 지워집니다.')) return;
+  if (!currentId || !confirm('이 제출물을 삭제할까요? 이 회차의 영상과 점수가 모두 지워집니다.')) return;
   const r = rows.find(x => x.id === currentId);
-  if (r && r.video_path) await sb.storage.from('videos').remove([r.video_path]);
+  const paths = ((r && r.submission_videos) || []).map(v => v.path).filter(Boolean);
+  if (paths.length) {
+    const { error: se } = await sb.storage.from('videos').remove(paths);
+    if (se) return alert('영상 삭제 실패: ' + se.message);
+  }
   const { error } = await sb.from('submissions').delete().eq('id', currentId);
   if (error) return alert('삭제 실패: ' + error.message);
   closeGrade();
