@@ -78,8 +78,8 @@
 <header>
   <h1>🤟 수어 실습 과제방</h1>
   <nav>
-    <a href="#submit" data-nav="submit">과제 제출</a>
-    <a href="#result" data-nav="result">점수 조회</a>
+    <a href="#submit" data-nav="submit" id="navSubmit">과제 제출</a>
+    <a href="#result" data-nav="result" id="navResult">점수 조회</a>
     <a href="#teacher" data-nav="teacher" id="navTeacher">강사 페이지</a>
   </nav>
   <div class="head-right">
@@ -570,7 +570,7 @@ async function init(){
   const { data: { session: s } } = await sb.auth.getSession();
   session = s;
   applyMode();
-  if (!location.hash) location.hash = '#submit';
+  if (!location.hash) location.hash = isStudent() ? '#submit' : '#teacher';
   route();
 }
 $('#btnConnect').onclick = () => {
@@ -597,16 +597,20 @@ $('#btnLink').onclick = async () => {
 function isStudent(){ return !!(cfg && cfg.student); }
 function applyMode(){
   const stu = isStudent();
-  $('#navTeacher').hidden = stu;
+  $('#navTeacher').hidden = stu;      // 수강생에게는 강사 페이지가 안 보임
+  $('#navSubmit').hidden = !stu;      // 강사 기기에는 제출·조회 메뉴가 안 보임
+  $('#navResult').hidden = !stu;
   $('#btnSetting').hidden = stu || !session;
   $('#btnLink').hidden = stu || !session;
 }
 const VIEWS = ['submit', 'result', 'teacher'];
 function route(){
   if (!sb) return;
-  let v = location.hash.replace('#', '') || 'submit';
-  if (!VIEWS.includes(v)) v = 'submit';
-  if (v === 'teacher' && isStudent()) { location.hash = '#submit'; return; }
+  const home = isStudent() ? 'submit' : 'teacher';
+  let v = location.hash.replace('#', '') || home;
+  if (!VIEWS.includes(v)) v = home;
+  if (isStudent() && v === 'teacher') { location.hash = '#submit'; return; }
+  if (!isStudent() && v !== 'teacher') { location.hash = '#teacher'; return; }
   VIEWS.forEach(n => {
     $('#view-' + n).classList.toggle('show', n === v);
     document.querySelector(`[data-nav="${n}"]`).classList.toggle('active', n === v);
