@@ -80,7 +80,7 @@
   <nav>
     <a href="#submit" data-nav="submit">과제 제출</a>
     <a href="#result" data-nav="result">점수 조회</a>
-    <a href="#teacher" data-nav="teacher">강사 페이지</a>
+    <a href="#teacher" data-nav="teacher" id="navTeacher">강사 페이지</a>
   </nav>
   <div class="head-right">
     <button class="btn ghost" id="btnLink" hidden>🔗 학생용 링크 복사</button>
@@ -535,8 +535,8 @@ let stream = null, recorder = null, chunks = [], autoStopTimer = null, previewUr
 function showSetup(text, needInstall){
   $('#setup').hidden = false;
   document.querySelectorAll('main > section.view').forEach(s => s.classList.remove('show'));
-  $('#cfgUrl').value = cfg ? cfg.url : '';
-  $('#cfgKey').value = cfg ? cfg.key : '';
+  $('#cfgUrl').value = '';   // 주소와 키는 화면에 보여 주지 않습니다
+  $('#cfgKey').value = '';
   $('#setupMsg').innerHTML = text ? `<div class="msg ${needInstall ? 'warn' : 'err'}">${esc(text)}</div>` : '';
   $('#installBox').hidden = !needInstall;
   if (needInstall) $('#sqlView').textContent = INSTALL_SQL;
@@ -546,8 +546,9 @@ function showSetup(text, needInstall){
 async function init(){
   // 학생용 링크(?p=주소&k=키)로 들어오면 연결 정보를 저장합니다
   const q = new URLSearchParams(location.search);
-  if (q.get('p') && q.get('k')) {
-    cfg = { url: q.get('p'), key: q.get('k') };
+  if (q.get('p') && q.get('k')) cfg = { url: q.get('p'), key: q.get('k'), student: q.get('s') === '1' };
+  if (cfg && q.get('teacher') === '1') cfg.student = false;   // 강사가 자기 기기를 강사 모드로 되돌릴 때
+  if (cfg && (q.get('p') || q.get('teacher') === '1')) {
     localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
     history.replaceState(null, '', location.pathname + location.hash);
   }
@@ -566,10 +567,9 @@ async function init(){
     return showSetup('연결에 실패했습니다: ' + errText(e), false);
   }
   $('#setup').hidden = true;
-  $('#btnSetting').hidden = false;
-  $('#btnLink').hidden = false;
   const { data: { session: s } } = await sb.auth.getSession();
   session = s;
+  applyMode();
   if (!location.hash) location.hash = '#submit';
   route();
 }
@@ -577,7 +577,7 @@ $('#btnConnect').onclick = () => {
   const url = $('#cfgUrl').value.trim().replace(/\/$/, '');
   const key = $('#cfgKey').value.trim();
   if (!/^https:\/\/.+/.test(url) || !key) return setMsg($('#setupMsg'), 'err', '주소와 키를 모두 넣어 주세요. 주소는 https://로 시작합니다.');
-  cfg = { url, key };
+  cfg = { url, key, student: false };
   localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
   init();
 };
@@ -587,17 +587,26 @@ $('#btnCopySql').onclick = async () => {
   catch (e) { const r = document.createRange(); r.selectNodeContents($('#sqlView')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); alert('복사가 안 되면 화면의 SQL을 직접 드래그해서 복사하세요.'); }
 };
 $('#btnLink').onclick = async () => {
-  const url = `${location.origin}${location.pathname}?p=${encodeURIComponent(cfg.url)}&k=${encodeURIComponent(cfg.key)}#submit`;
+  const url = `${location.origin}${location.pathname}?p=${encodeURIComponent(cfg.url)}&k=${encodeURIComponent(cfg.key)}&s=1#submit`;
   try { await navigator.clipboard.writeText(url); alert('학생용 링크를 복사했습니다. 수강생에게만 보내세요.'); }
   catch (e) { prompt('아래 링크를 복사해서 수강생에게 보내세요.', url); }
 };
 
 /* ================= 화면 전환 ================= */
+// 학생 모드(학생용 링크로 들어온 기기): 강사 메뉴·연결 설정·학생용 링크는 보이지 않습니다.
+function isStudent(){ return !!(cfg && cfg.student); }
+function applyMode(){
+  const stu = isStudent();
+  $('#navTeacher').hidden = stu;
+  $('#btnSetting').hidden = stu || !session;
+  $('#btnLink').hidden = stu || !session;
+}
 const VIEWS = ['submit', 'result', 'teacher'];
 function route(){
   if (!sb) return;
   let v = location.hash.replace('#', '') || 'submit';
   if (!VIEWS.includes(v)) v = 'submit';
+  if (v === 'teacher' && isStudent()) { location.hash = '#submit'; return; }
   VIEWS.forEach(n => {
     $('#view-' + n).classList.toggle('show', n === v);
     document.querySelector(`[data-nav="${n}"]`).classList.toggle('active', n === v);
@@ -856,6 +865,7 @@ function renderTeacher(){
   $('#tLogin').hidden = !!session;
   $('#tPanel').hidden = !session;
   $('#btnLogout').hidden = !session;
+  applyMode();
   if (!session) return;
   ensureOwner().then(ok => { if (ok) loadTeacher(); });
 }
